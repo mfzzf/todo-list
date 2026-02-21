@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    env:
+      SCHEME: "ToDo List"
+      PROJECT: "ToDo List.xcodeproj"
+      APP_NAME: "ToDo List"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -project "$PROJECT" -scheme "$SCHEME"
+
+      - name: Build
+        run: |
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/ToDo List.xcarchive" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export app
+        run: |
+          mkdir -p "$RUNNER_TEMP/export"
+          cp -R "$RUNNER_TEMP/ToDo List.xcarchive/Products/Applications/ToDo List.app" "$RUNNER_TEMP/export/"
+
+      - name: Create DMG
+        run: |
+          brew install create-dmg || true
+          create-dmg \
+            --volname "ToDo List" \
+            --volicon "$RUNNER_TEMP/export/ToDo List.app/Contents/Resources/AppIcon.icns" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "ToDo List.app" 150 185 \
+            --app-drop-link 450 185 \
+            "$RUNNER_TEMP/ToDo-List-${{ github.ref_name }}.dmg" \
+            "$RUNNER_TEMP/export/" || true
+
+          # Fallback to zip if DMG creation fails
+          if [ ! -f "$RUNNER_TEMP/ToDo-List-${{ github.ref_name }}.dmg" ]; then
+            cd "$RUNNER_TEMP/export"
+            zip -r "$RUNNER_TEMP/ToDo-List-${{ github.ref_name }}.zip" "ToDo List.app"
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            ${{ runner.temp }}/ToDo-List-${{ github.ref_name }}.dmg
+            ${{ runner.temp }}/ToDo-List-${{ github.ref_name }}.zip
