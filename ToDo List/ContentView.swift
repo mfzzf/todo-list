@@ -9,47 +9,56 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State private var selectedFilter: SidebarFilter = .all
+    @State private var selectedItem: Item?
+    @State private var searchText = ""
+    @State private var showingAddSheet = false
 
     var body: some View {
         NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-            .toolbar {
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
+            SidebarView(
+                selectedFilter: $selectedFilter,
+                searchText: $searchText,
+                showingAddSheet: $showingAddSheet
+            )
+        } content: {
+            ToDoListView(
+                filter: selectedFilter,
+                searchText: searchText,
+                selectedItem: $selectedItem
+            )
+            .navigationTitle(selectedFilter.label)
         } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+            Group {
+                if let selectedItem {
+                    DetailView(item: selectedItem)
+                } else {
+                    ContentUnavailableView(
+                        L("detail.selectTodo"),
+                        systemImage: "sidebar.right",
+                        description: Text(L("detail.selectHint"))
+                    )
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingAddSheet = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.glass)
+                }
             }
         }
+        .toolbar(removing: .sidebarToggle)
+        .sheet(isPresented: $showingAddSheet) {
+            AddToDoSheet()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .addNewTodo)) { _ in
+            showingAddSheet = true
+        }
+        .frame(minWidth: 700, minHeight: 450)
     }
 }
 
