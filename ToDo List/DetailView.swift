@@ -599,7 +599,7 @@ private struct AttachmentRowView: View {
 
 // MARK: - Custom Calendar
 
-private struct InlineCalendarView: View {
+struct InlineCalendarView: View {
     @Binding var selectedDate: Date
     @State private var displayedMonth: Date
 

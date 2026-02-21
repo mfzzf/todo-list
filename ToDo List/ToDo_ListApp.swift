@@ -45,7 +45,7 @@ struct ToDo_ListApp: App {
         .modelContainer(sharedModelContainer)
         .defaultSize(width: 900, height: 600)
         .commands {
-            CommandGroup(after: .newItem) {
+            CommandGroup(replacing: .newItem) {
                 Button(L("command.newTodo")) {
                     NotificationCenter.default.post(name: .addNewTodo, object: nil)
                 }
