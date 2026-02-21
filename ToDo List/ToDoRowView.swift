@@ -10,6 +10,7 @@ import SwiftData
 
 struct ToDoRowView: View {
     @Bindable var item: Item
+    @Environment(\.modelContext) private var modelContext
 
     private var priorityEnum: Priority {
         Priority(rawValue: item.priority) ?? .none
@@ -86,5 +87,26 @@ struct ToDoRowView: View {
         }
         .padding(.vertical, 4)
         .opacity(item.isCompleted ? 0.7 : 1.0)
+        .contextMenu {
+            Button {
+                let copy = Item(title: item.title)
+                copy.notes = item.notes
+                copy.priority = item.priority
+                copy.category = item.category
+                copy.dueDate = item.dueDate
+                copy.attachments = item.attachments
+                modelContext.insert(copy)
+            } label: {
+                Label(L("row.copy"), systemImage: "doc.on.doc")
+            }
+            Divider()
+            Button(role: .destructive) {
+                withAnimation {
+                    modelContext.delete(item)
+                }
+            } label: {
+                Label(L("row.delete"), systemImage: "trash")
+            }
+        }
     }
 }

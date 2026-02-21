@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import MarkdownUI
 
 struct DetailView: View {
     @Bindable var item: Item
@@ -16,6 +17,8 @@ struct DetailView: View {
     @State private var newCategory = ""
     @State private var isDropTargeted = false
     @State private var showFileImporter = false
+    @State private var isNotesExpanded = false
+    @State private var isEditingNotes = false
 
     private var priorityEnum: Priority {
         Priority(rawValue: item.priority) ?? .none
@@ -29,19 +32,25 @@ struct DetailView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                headerSection
-                Divider().padding(.horizontal, 24)
-                propertiesSection
-                Divider().padding(.horizontal, 24)
+        Group {
+            if isNotesExpanded {
                 notesSection
-                Divider().padding(.horizontal, 24)
-                attachmentsSection
-                Divider().padding(.horizontal, 24)
-                dateSection
-                Spacer(minLength: 24)
-                footerSection
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        headerSection
+                        Divider().padding(.horizontal, 24)
+                        propertiesSection
+                        Divider().padding(.horizontal, 24)
+                        notesSection
+                        Divider().padding(.horizontal, 24)
+                        attachmentsSection
+                        Divider().padding(.horizontal, 24)
+                        dateSection
+                        Spacer(minLength: 24)
+                        footerSection
+                    }
+                }
             }
         }
         .navigationTitle("")
@@ -74,8 +83,6 @@ struct DetailView: View {
                     item.addAttachment(url: url)
                     if accessing { url.stopAccessingSecurityScopedResource() }
                 }
-            }
-        }
             }
         }
     }
@@ -252,32 +259,93 @@ struct DetailView: View {
         .padding(24)
     }
 
-    // MARK: - Notes（修复 placeholder 对齐）
+    // MARK: - Notes
 
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L("detail.notes"))
-                .font(.headline)
+            HStack {
+                Text(L("detail.notes"))
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                if !item.notes.isEmpty {
+                    Button {
+                        withAnimation(.snappy) { isEditingNotes.toggle() }
+                    } label: {
+                        Image(systemName: isEditingNotes ? "eye" : "pencil.line")
+                            .font(.caption)
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help(isEditingNotes ? L("detail.notesPreview") : L("detail.notesEdit"))
+                }
+
+                Button {
+                    withAnimation(.snappy) { isNotesExpanded.toggle() }
+                } label: {
+                    Image(systemName: isNotesExpanded
+                           ? "arrow.down.right.and.arrow.up.left"
+                           : "arrow.up.left.and.arrow.down.right")
+                        .font(.caption)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
+            }
 
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: $item.notes)
-                    .font(.body)
-                    .scrollContentBackground(.hidden)
+            if isEditingNotes {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $item.notes)
+                        .font(.body)
+                        .scrollContentBackground(.hidden)
 
+                    if item.notes.isEmpty {
+                        Text(L("detail.notesHint"))
+                            .foregroundStyle(.tertiary)
+                            .padding(.top, 8)
+                            .padding(.leading, 5)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .padding(12)
+                .frame(minHeight: isNotesExpanded ? nil : 120)
+                .frame(maxHeight: isNotesExpanded ? .infinity : nil)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            } else {
                 if item.notes.isEmpty {
                     Text(L("detail.notesHint"))
                         .foregroundStyle(.tertiary)
-                        .padding(.top, 8)
-                        .padding(.leading, 5)
-                        .allowsHitTesting(false)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(12)
+                        .frame(minHeight: isNotesExpanded ? nil : 120, alignment: .topLeading)
+                        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+                        .onTapGesture { withAnimation(.snappy) { isEditingNotes = true } }
+                } else if isNotesExpanded {
+                    ScrollView {
+                        Markdown(item.notes)
+                            .markdownTheme(.gitHub)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(12)
+                    }
+                    .frame(maxHeight: .infinity)
+                } else {
+                    Markdown(item.notes)
+                        .markdownTheme(.gitHub)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(12)
+                        .frame(minHeight: 120, alignment: .topLeading)
                 }
             }
-            .padding(12)
-            .frame(minHeight: 120)
-            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
         }
         .padding(24)
+        .frame(maxHeight: isNotesExpanded ? .infinity : nil)
     }
 
     // MARK: - Attachments
