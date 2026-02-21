@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: self-hosted
+    permissions:
+      contents: write
 
     env:
       SCHEME: "ToDo List"
