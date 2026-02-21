@@ -160,6 +160,16 @@ enum L10n {
 
         // Command
         "command.newTodo":       "新建待办",
+
+        // About
+        "about.title":           "关于",
+        "about.version":         "当前版本",
+        "about.checkUpdate":     "检查更新",
+        "about.checking":        "检查中...",
+        "about.latest":          "已是最新版本",
+        "about.newVersion":      "发现新版本: %@",
+        "about.download":        "前往下载",
+        "about.checkFailed":     "检查失败",
     ]
 
     private static let en: [String: String] = [
@@ -242,6 +252,16 @@ enum L10n {
         "attachment.pickPrompt": "Attach",
 
         "command.newTodo":       "New Todo",
+
+        // About
+        "about.title":           "About",
+        "about.version":         "Current Version",
+        "about.checkUpdate":     "Check for Updates",
+        "about.checking":        "Checking...",
+        "about.latest":          "You're up to date",
+        "about.newVersion":      "New version available: %@",
+        "about.download":        "Download",
+        "about.checkFailed":     "Check failed",
     ]
 
     private static let ja: [String: String] = [
@@ -324,5 +344,15 @@ enum L10n {
         "attachment.pickPrompt": "添付",
 
         "command.newTodo":       "新規タスク",
+
+        // About
+        "about.title":           "バージョン情報",
+        "about.version":         "現在のバージョン",
+        "about.checkUpdate":     "アップデートを確認",
+        "about.checking":        "確認中...",
+        "about.latest":          "最新バージョンです",
+        "about.newVersion":      "新しいバージョン: %@",
+        "about.download":        "ダウンロード",
+        "about.checkFailed":     "確認に失敗しました",
     ]
 }
