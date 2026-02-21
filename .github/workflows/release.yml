@@ -1,3 +1,8 @@
+# Requires Xcode 26.2+ (macOS 26.2 deployment target).
+# GitHub-hosted runners may not have Xcode 26.2 yet.
+# To use a self-hosted runner, change runs-on to: self-hosted
+# and ensure Xcode 26.2 is installed on your Mac.
+
 name: Release
 
 on:
@@ -7,19 +12,25 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: self-hosted
 
     env:
       SCHEME: "ToDo List"
       PROJECT: "ToDo List.xcodeproj"
-      APP_NAME: "ToDo List"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        run: |
+          # List available Xcode versions
+          ls /Applications/ | grep Xcode
+          # Select the latest available Xcode
+          XCODE_PATH=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          echo "Using: $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          xcodebuild -version
 
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project "$PROJECT" -scheme "$SCHEME"
@@ -45,7 +56,6 @@ jobs:
           brew install create-dmg || true
           create-dmg \
             --volname "ToDo List" \
-            --volicon "$RUNNER_TEMP/export/ToDo List.app/Contents/Resources/AppIcon.icns" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
