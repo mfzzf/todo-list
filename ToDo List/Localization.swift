@@ -144,6 +144,16 @@ enum L10n {
         "menubar.openApp":       "打开应用",
         "menubar.quit":          "退出",
 
+        // Attachment
+        "attachment.title":      "附件",
+        "attachment.add":        "添加文件",
+        "attachment.dropHint":   "拖放文件到此处，或点击添加",
+        "attachment.open":       "打开文件",
+        "attachment.showInFinder": "在 Finder 中显示",
+        "attachment.remove":     "移除附件",
+        "attachment.pickMessage": "选择要附加的文件",
+        "attachment.pickPrompt": "附加",
+
         // Command
         "command.newTodo":       "新建待办",
     ]
@@ -214,6 +224,15 @@ enum L10n {
         "menubar.openApp":       "Open App",
         "menubar.quit":          "Quit",
 
+        "attachment.title":      "Attachments",
+        "attachment.add":        "Add File",
+        "attachment.dropHint":   "Drop files here, or click to add",
+        "attachment.open":       "Open File",
+        "attachment.showInFinder": "Show in Finder",
+        "attachment.remove":     "Remove Attachment",
+        "attachment.pickMessage": "Choose files to attach",
+        "attachment.pickPrompt": "Attach",
+
         "command.newTodo":       "New Todo",
     ]
 
@@ -282,6 +301,15 @@ enum L10n {
         "menubar.noTodos":       "未完了のタスクなし",
         "menubar.openApp":       "アプリを開く",
         "menubar.quit":          "終了",
+
+        "attachment.title":      "添付ファイル",
+        "attachment.add":        "ファイルを追加",
+        "attachment.dropHint":   "ここにファイルをドロップ、またはクリックして追加",
+        "attachment.open":       "ファイルを開く",
+        "attachment.showInFinder": "Finder で表示",
+        "attachment.remove":     "添付を削除",
+        "attachment.pickMessage": "添付するファイルを選択",
+        "attachment.pickPrompt": "添付",
 
         "command.newTodo":       "新規タスク",
     ]

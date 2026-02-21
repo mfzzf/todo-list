@@ -64,6 +64,18 @@ struct ToDoRowView: View {
 
             Spacer()
 
+            if !item.attachmentList.isEmpty {
+                HStack(spacing: 2) {
+                    Image(systemName: "paperclip")
+                        .font(.caption2)
+                    if item.attachmentList.count > 1 {
+                        Text("\(item.attachmentList.count)")
+                            .font(.caption2)
+                    }
+                }
+                .foregroundStyle(.secondary)
+            }
+
             if priorityEnum != .none {
                 Image(systemName: priorityEnum.symbolName)
                     .font(.caption)

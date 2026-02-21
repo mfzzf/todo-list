@@ -7,12 +7,15 @@
 
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct DetailView: View {
     @Bindable var item: Item
     @Environment(\.modelContext) private var modelContext
     @State private var showDeleteConfirmation = false
     @State private var newCategory = ""
+    @State private var isDropTargeted = false
+    @State private var showFileImporter = false
 
     private var priorityEnum: Priority {
         Priority(rawValue: item.priority) ?? .none
@@ -33,6 +36,8 @@ struct DetailView: View {
                 propertiesSection
                 Divider().padding(.horizontal, 24)
                 notesSection
+                Divider().padding(.horizontal, 24)
+                attachmentsSection
                 Divider().padding(.horizontal, 24)
                 dateSection
                 Spacer(minLength: 24)
@@ -56,6 +61,21 @@ struct DetailView: View {
         .confirmationDialog(L("detail.deleteConfirm"), isPresented: $showDeleteConfirmation) {
             Button(L("detail.deleteAction"), role: .destructive) {
                 modelContext.delete(item)
+            }
+        }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: true
+        ) { result in
+            if case .success(let urls) = result {
+                for url in urls {
+                    let accessing = url.startAccessingSecurityScopedResource()
+                    item.addAttachment(url: url)
+                    if accessing { url.stopAccessingSecurityScopedResource() }
+                }
+            }
+        }
             }
         }
     }
@@ -260,6 +280,122 @@ struct DetailView: View {
         .padding(24)
     }
 
+    // MARK: - Attachments
+
+    private var attachmentsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label(L("attachment.title"), systemImage: "paperclip")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+
+                if !item.attachmentList.isEmpty {
+                    Text("\(item.attachmentList.count)")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.secondary, in: Capsule())
+                }
+
+                Spacer()
+
+                Button {
+                    showFileImporter = true
+                } label: {
+                    Label(L("attachment.add"), systemImage: "plus")
+                        .font(.subheadline)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.blue)
+            }
+
+            if item.attachmentList.isEmpty {
+                emptyAttachmentDropZone
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(item.attachmentList) { attachment in
+                        AttachmentRowView(
+                            attachment: attachment,
+                            onOpen: { openAttachment(attachment) },
+                            onShowInFinder: { showAttachmentInFinder(attachment) },
+                            onRemove: { item.removeAttachment(attachment) }
+                        )
+                        if attachment.id != item.attachmentList.last?.id {
+                            Divider().padding(.leading, 44)
+                        }
+                    }
+                }
+                .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(isDropTargeted ? Color.blue : Color.clear, lineWidth: 2)
+                )
+                .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+                    handleDrop(providers)
+                }
+            }
+        }
+        .padding(24)
+    }
+
+    private var emptyAttachmentDropZone: some View {
+        Button {
+            showFileImporter = true
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: "arrow.down.doc")
+                    .font(.title3)
+                    .foregroundStyle(.tertiary)
+                Text(L("attachment.dropHint"))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .background {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(
+                        isDropTargeted ? Color.blue : Color.secondary.opacity(0.2),
+                        style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])
+                    )
+            }
+            .background(isDropTargeted ? Color.blue.opacity(0.05) : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+            handleDrop(providers)
+        }
+    }
+
+    // MARK: - Attachment Helpers
+
+    private func openAttachment(_ attachment: AttachmentInfo) {
+        guard let url = item.resolveAttachmentURL(attachment) else { return }
+        AttachmentService.openFile(url: url)
+    }
+
+    private func showAttachmentInFinder(_ attachment: AttachmentInfo) {
+        guard let url = item.resolveAttachmentURL(attachment) else { return }
+        AttachmentService.showInFinder(url: url)
+    }
+
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        var handled = false
+        for provider in providers {
+            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { data, _ in
+                guard let data = data as? Data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                DispatchQueue.main.async {
+                    item.addAttachment(url: url)
+                }
+            }
+            handled = true
+        }
+        return handled
+    }
+
     // MARK: - Footer（删除按钮放右侧，字号加大）
 
     private var footerSection: some View {
@@ -311,6 +447,85 @@ struct DetailView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(color.opacity(0.12), in: Capsule())
+    }
+}
+
+// MARK: - Attachment Row
+
+private struct AttachmentRowView: View {
+    let attachment: AttachmentInfo
+    let onOpen: () -> Void
+    let onShowInFinder: () -> Void
+    let onRemove: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: FileTypeIcon.symbolName(for: attachment.fileExtension))
+                .font(.title3)
+                .foregroundStyle(FileTypeIcon.color(for: attachment.fileExtension))
+                .frame(width: 28, height: 28)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(attachment.fileName)
+                    .font(.subheadline)
+                    .lineLimit(1)
+                Text(attachment.fileExtension.uppercased())
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+
+            if isHovered {
+                HStack(spacing: 4) {
+                    Button {
+                        onShowInFinder()
+                    } label: {
+                        Image(systemName: "folder")
+                            .font(.caption)
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help(L("attachment.showInFinder"))
+
+                    Button {
+                        onRemove()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.caption)
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help(L("attachment.remove"))
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.8)))
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(isHovered ? Color.primary.opacity(0.04) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) { isHovered = hovering }
+        }
+        .onTapGesture { onOpen() }
+        .contextMenu {
+            Button { onOpen() } label: {
+                Label(L("attachment.open"), systemImage: "arrow.up.doc")
+            }
+            Button { onShowInFinder() } label: {
+                Label(L("attachment.showInFinder"), systemImage: "folder")
+            }
+            Divider()
+            Button(role: .destructive) { onRemove() } label: {
+                Label(L("attachment.remove"), systemImage: "trash")
+            }
+        }
     }
 }
 
