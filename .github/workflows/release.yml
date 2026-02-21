@@ -1,7 +1,5 @@
 # Requires Xcode 26.2+ (macOS 26.2 deployment target).
-# GitHub-hosted runners may not have Xcode 26.2 yet.
-# To use a self-hosted runner, change runs-on to: self-hosted
-# and ensure Xcode 26.2 is installed on your Mac.
+# Uses a self-hosted runner with Xcode 26.2 installed.
 
 name: Release
 
@@ -17,6 +15,7 @@ jobs:
     env:
       SCHEME: "ToDo List"
       PROJECT: "ToDo List.xcodeproj"
+      TAG: ${{ github.ref_name }}
 
     steps:
       - name: Checkout
@@ -24,9 +23,6 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # List available Xcode versions
-          ls /Applications/ | grep Xcode
-          # Select the latest available Xcode
           XCODE_PATH=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
           echo "Using: $XCODE_PATH"
           sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
@@ -35,7 +31,7 @@ jobs:
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project "$PROJECT" -scheme "$SCHEME"
 
-      - name: Build
+      - name: Archive
         run: |
           xcodebuild archive \
             -project "$PROJECT" \
@@ -46,35 +42,38 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Export app
+      - name: Package
         run: |
+          APP_DIR="$RUNNER_TEMP/ToDo List.xcarchive/Products/Applications"
           mkdir -p "$RUNNER_TEMP/export"
-          cp -R "$RUNNER_TEMP/ToDo List.xcarchive/Products/Applications/ToDo List.app" "$RUNNER_TEMP/export/"
+          cp -R "$APP_DIR/ToDo List.app" "$RUNNER_TEMP/export/"
 
-      - name: Create DMG
-        run: |
-          brew install create-dmg || true
-          create-dmg \
-            --volname "ToDo List" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --icon "ToDo List.app" 150 185 \
-            --app-drop-link 450 185 \
-            "$RUNNER_TEMP/ToDo-List-${{ github.ref_name }}.dmg" \
-            "$RUNNER_TEMP/export/" || true
+          # Create ZIP
+          cd "$RUNNER_TEMP/export"
+          zip -r "$RUNNER_TEMP/ToDo-List-${TAG}.zip" "ToDo List.app"
 
-          # Fallback to zip if DMG creation fails
-          if [ ! -f "$RUNNER_TEMP/ToDo-List-${{ github.ref_name }}.dmg" ]; then
-            cd "$RUNNER_TEMP/export"
-            zip -r "$RUNNER_TEMP/ToDo-List-${{ github.ref_name }}.zip" "ToDo List.app"
+          # Try DMG (optional)
+          if command -v create-dmg &> /dev/null; then
+            create-dmg \
+              --volname "ToDo List" \
+              --window-pos 200 120 \
+              --window-size 600 400 \
+              --icon-size 100 \
+              --icon "ToDo List.app" 150 185 \
+              --app-drop-link 450 185 \
+              "$RUNNER_TEMP/ToDo-List-${TAG}.dmg" \
+              "$RUNNER_TEMP/export/" || true
           fi
+
+          echo "--- Output files ---"
+          ls -la "$RUNNER_TEMP"/ToDo-List-${TAG}.*
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           generate_release_notes: true
+          fail_on_unmatched_files: false
           files: |
-            ${{ runner.temp }}/ToDo-List-${{ github.ref_name }}.dmg
             ${{ runner.temp }}/ToDo-List-${{ github.ref_name }}.zip
+            ${{ runner.temp }}/ToDo-List-${{ github.ref_name }}.dmg
