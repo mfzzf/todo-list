@@ -39,7 +39,7 @@ struct ToDo_ListApp: App {
     }()
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             ContentView()
         }
         .modelContainer(sharedModelContainer)

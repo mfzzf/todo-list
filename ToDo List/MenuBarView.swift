@@ -10,6 +10,7 @@ import SwiftData
 
 struct MenuBarView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openWindow) private var openWindow
     @Query(sort: \Item.creationDate, order: .reverse) private var allItems: [Item]
 
     private var pendingItems: [Item] {
@@ -59,7 +60,7 @@ struct MenuBarView: View {
             // Footer
             HStack {
                 Button {
-                    NSApp.activate(ignoringOtherApps: true)
+                    showMainWindow()
                 } label: {
                     Label(L("menubar.openApp"), systemImage: "macwindow")
                         .font(.subheadline)
@@ -69,7 +70,7 @@ struct MenuBarView: View {
                 Spacer()
 
                 Button {
-                    NSApp.activate(ignoringOtherApps: true)
+                    showMainWindow()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         NotificationCenter.default.post(name: .addNewTodo, object: nil)
                     }
@@ -90,6 +91,18 @@ struct MenuBarView: View {
             .padding(12)
         }
         .frame(width: 280)
+    }
+
+    private func showMainWindow() {
+        let mainWindow = NSApp.windows.first { window in
+            !(window is NSPanel) && window.canBecomeMain
+        }
+        if let window = mainWindow {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            openWindow(id: "main")
+        }
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
 
