@@ -40,6 +40,7 @@ struct ContentView: View {
                     )
                 }
             }
+            .navigationSplitViewColumnWidth(min: 340, ideal: 420)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -58,7 +59,7 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .addNewTodo)) { _ in
             showingAddSheet = true
         }
-        .frame(minWidth: 700, minHeight: 450)
+        .frame(minWidth: 780, minHeight: 450)
     }
 }
 
